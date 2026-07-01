@@ -1,252 +1,253 @@
-# Прогноз розничного товарооборота магазинов «Пятёрочка»
+# Pyaterochka Store Revenue Forecasting
 
-Решение команды для онлайн-хакатона **«Градиент роста»**, организованного **Сбером и ФКН НИУ ВШЭ**, по кейсу **X5 Group**.
+A team solution developed for the **Gradient of Growth online hackathon**, organized by **Sber and the HSE Faculty of Computer Science**, based on a business case provided by **X5 Group**.
 
-> **Результат команды:** выход во второй этап, **15-е место** и **90 баллов из 100**.
+> **Team result:** advanced to the second stage, placed **15th**, and achieved a score of **90 out of 100**.
 
-## О проекте
+## Project Overview
 
-Цель проекта — построить модель, прогнозирующую **розничный товарооборот (РТО)** магазинов сети «Пятёрочка» на следующий месяц.
+The objective of the project was to build a machine learning model capable of forecasting the **monthly retail turnover (revenue)** of Pyaterochka stores.
 
-В распоряжении команды находились:
+The available data included:
 
-- помесячная история РТО по магазинам;
-- характеристики магазинов;
-- сведения о географическом расположении;
-- данные о населении и домохозяйствах;
-- показатели пешеходного и автомобильного трафика;
-- информация о ближайшей инфраструктуре и конкурентах;
-- количество касс и наличие алкогольной лицензии.
+- monthly store revenue history;
+- store characteristics;
+- geographic information;
+- population and household statistics;
+- pedestrian and vehicle traffic;
+- nearby infrastructure and competitors;
+- number of checkout counters;
+- alcohol license availability.
 
-Задача рассматривалась как прогнозирование множества коротких временных рядов: для каждого магазина необходимо было учесть его собственный уровень продаж, динамику во времени и статические характеристики.
+The problem was approached as a collection of short time series. For each store, the model had to capture its individual revenue level, temporal dynamics, and static characteristics.
 
-## Основные этапы решения
+## Solution Pipeline
 
-1. Исследовательский анализ временных рядов.
-2. Анализ тренда, сезонности и разброса РТО.
-3. Исследование автокорреляции и связей между признаками.
-4. Построение лаговых, скользящих и трендовых признаков.
-5. Walk-forward validation без перемешивания временных наблюдений.
-6. Обучение линейной baseline-модели Ridge.
-7. Обучение Gradient Boosting Regressor.
-8. Сравнение моделей и анализ важности признаков.
-9. Формирование прогноза и итогового файла `submission_final.csv`.
+1. Exploratory analysis of store-level time series.
+2. Analysis of revenue trends, seasonality, and distribution.
+3. Autocorrelation and feature correlation analysis.
+4. Creation of lag-based, rolling, and trend features.
+5. Walk-forward validation without shuffling temporal observations.
+6. Training a Ridge regression baseline.
+7. Training a Gradient Boosting model.
+8. Model comparison and feature importance analysis.
+9. Generation of the final forecast and `submission_final.csv`.
 
-## Данные
+## Dataset
 
-Каждая строка обучающей выборки соответствует одному магазину в определённом месяце.
+Each row in the training dataset represents one store during a particular month.
 
-### Целевая переменная
+### Target Variable
 
-- `РТО` — розничный товарооборот магазина.
+- `РТО` — monthly retail turnover of a store.
 
-### Временные признаки
+### Temporal Information
 
-- `Месяц`;
-- предыдущие значения РТО;
-- скользящие средние;
-- темпы роста;
-- наклон индивидуального тренда магазина;
-- волатильность ряда.
+- month number;
+- previous revenue values;
+- rolling statistics;
+- revenue growth rates;
+- store-specific trend;
+- time-series volatility.
 
-### Статические признаки магазина
+### Static Store Features
 
-- дата открытия;
-- торговая площадь;
-- населённый пункт и регион;
-- численность населения;
-- количество домохозяйств;
-- пешеходный и автомобильный трафик;
-- объекты инфраструктуры в заданном радиусе;
-- продуктовые магазины и другие «Пятёрочки» рядом;
-- количество касс;
-- наличие алкогольной лицензии.
+- store opening period;
+- retail floor area;
+- city and region;
+- population;
+- number of households;
+- pedestrian and vehicle traffic;
+- nearby infrastructure within predefined radii;
+- nearby grocery stores and other Pyaterochka locations;
+- number of checkout counters;
+- alcohol license availability.
 
-Данные хакатона не публикуются в репозитории.
+The original hackathon dataset is not included in this repository.
 
-## Исследовательский анализ
+## Exploratory Data Analysis
 
-### Динамика и распределение РТО
+### Revenue Dynamics and Distribution
 
-Анализ показал, что магазины существенно различаются по абсолютному уровню товарооборота, однако индивидуальные временные ряды в большинстве случаев достаточно стабильны. Поэтому предыдущие значения РТО являются важными предикторами.
+The analysis showed substantial differences in absolute revenue levels across stores. However, most individual time series were relatively stable, making previous revenue values especially useful predictors.
 
-![Анализ временных рядов](fig1_trends.png)
+![Time-series analysis](fig1_trends.png)
 
-### Декомпозиция временного ряда
+### Time-Series Decomposition
 
-Для среднего РТО была исследована условная декомпозиция на:
+The average monthly revenue series was decomposed into:
 
-- тренд;
-- сезонную компоненту;
-- остаточный шум.
+- trend;
+- seasonal component;
+- residual noise.
 
-Из-за небольшой длины истории полноценная годовая сезонная декомпозиция невозможна, поэтому тренд оценивался линейно, а краткосрочные отклонения анализировались отдельно.
+Because the available history covered only ten months, a full annual seasonal decomposition was not possible. Instead, the trend was estimated using a linear model, while short-term deviations were analysed separately.
 
-![Декомпозиция временного ряда](fig2_decomposition.png)
+![Time-series decomposition](fig2_decomposition.png)
 
-### Статистический анализ
+### Statistical Analysis
 
-Были рассмотрены:
+The following properties were investigated:
 
-- автокорреляция;
-- первые разности;
-- индивидуальные тренды магазинов;
-- коэффициент вариации;
-- корреляции статических характеристик с РТО.
+- autocorrelation;
+- first differences;
+- store-specific trends;
+- coefficient of variation;
+- correlations between static store characteristics and revenue.
 
-Особенно значимыми оказались лаговые признаки и характеристики, отражающие масштаб магазина, в частности количество касс.
+Lag-based features and variables representing store scale, especially the number of checkout counters, were among the most informative predictors.
 
-![Статистический анализ](fig3_stats.png)
+![Statistical analysis](fig3_stats.png)
 
 ## Feature Engineering
 
-Для каждого прогнозируемого месяца признаки строились только по доступной на тот момент истории. Это исключает утечку данных из будущего.
+All features for a target month were constructed exclusively from information available before that month. This prevents data leakage from future observations.
 
-### Лаговые признаки
+### Lag Features
 
-- `lag1` — РТО за предыдущий месяц;
-- `lag2` — РТО два месяца назад;
-- `lag3` — РТО три месяца назад.
+- `lag1` — revenue in the previous month;
+- `lag2` — revenue two months earlier;
+- `lag3` — revenue three months earlier.
 
-### Скользящие статистики
+### Rolling Statistics
 
-- `ma3` — среднее за последние три месяца;
-- `ma6` — среднее за последние шесть месяцев;
-- `ma_all` — среднее по всей доступной истории;
-- `std_all` — стандартное отклонение;
-- `cv` — коэффициент вариации.
+- `ma3` — average revenue over the previous three months;
+- `ma6` — average revenue over the previous six months;
+- `ma_all` — average over the entire available history;
+- `std_all` — standard deviation;
+- `cv` — coefficient of variation.
 
-### Признаки динамики
+### Dynamic Features
 
-- `diff1` — изменение РТО относительно предыдущего месяца;
-- `growth` — относительный темп роста;
-- `ratio_last` — отношение последнего значения к историческому среднему;
-- `trend` — наклон линейного тренда;
-- `trend_norm` — нормированный наклон тренда;
-- медиана и размах значений РТО.
+- `diff1` — absolute change in revenue from the previous month;
+- `growth` — relative revenue growth rate;
+- `ratio_last` — ratio of the latest value to the historical mean;
+- `trend` — slope of the linear revenue trend;
+- `trend_norm` — normalized trend slope;
+- historical median and range.
 
-Категориальные характеристики кодировались числовыми значениями при помощи `LabelEncoder`.
+Categorical store characteristics were converted into numerical values using `LabelEncoder`.
 
-## Валидация
+## Validation Strategy
 
-Для временных данных не использовалось случайное разбиение train/test.
+A random train-test split was not used because the observations are time-dependent.
 
-Применялась схема **walk-forward validation**:
+Instead, the project used **walk-forward validation**:
 
-- для обучающей выборки последовательно прогнозировались месяцы 4–9;
-- месяц 10 использовался как отложенная временная выборка;
-- после оценки качества формировался прогноз на месяц 11.
+- months 4–9 were predicted sequentially to construct the training set;
+- month 10 was used as a held-out temporal validation period;
+- after model evaluation, the final forecast was generated for month 11.
 
-Такой подход позволяет проверять модель в условиях, максимально близких к реальному прогнозированию будущего периода.
+This approach evaluates the model under conditions that closely resemble real-world forecasting, where only past information is available.
 
-## Модели
+## Models
 
 ### Ridge Regression
 
-Ridge использовалась как интерпретируемая линейная baseline-модель.
+Ridge regression was used as an interpretable linear baseline.
 
-Перед обучением числовые признаки стандартизировались с помощью `StandardScaler`. L2-регуляризация снижала влияние мультиколлинеарности между лагами и скользящими средними.
+Before training, numerical features were standardized with `StandardScaler`. L2 regularization reduced the impact of multicollinearity between lag features and rolling averages.
 
 ### Gradient Boosting
 
-Основной нелинейной моделью стал `GradientBoostingRegressor`.
+The primary nonlinear model was `GradientBoostingRegressor`.
 
-Модель способна учитывать:
+The model can capture:
 
-- нелинейные зависимости;
-- взаимодействия временных и статических признаков;
-- различия между регионами и типами магазинов;
-- неодинаковую динамику магазинов.
+- nonlinear relationships;
+- interactions between temporal and static features;
+- differences across regions and store types;
+- heterogeneous store-level revenue dynamics.
 
-Для итогового прогноза использовался ансамбль:
+The final prediction was produced using an ensemble of Ridge regression and Gradient Boosting:
 
 ```python
 final_prediction = 0.3 * ridge_prediction + 0.7 * gradient_boosting_prediction
 ```
 
-## Метрика
+## Evaluation Metric
 
-В качестве основной метрики использовалась **MAPE**:
+The primary evaluation metric was **Mean Absolute Percentage Error (MAPE)**:
 
 ```text
 MAPE = mean(|y_true - y_pred| / |y_true|) × 100%
 ```
 
-Чем меньше MAPE, тем точнее прогноз. В логике соревнования результат интерпретировался через показатель, связанный с `100 − MAPE`.
+A lower MAPE indicates a more accurate forecast. In the competition scoring logic, model performance was represented using a score related to `100 − MAPE`.
 
-## Результат
+## Competition Result
 
-Команда:
+Our team:
 
-- прошла во второй этап хакатона;
-- заняла **15-е место**;
-- получила **90 баллов из 100**.
+- advanced to the second stage of the hackathon;
+- placed **15th**;
+- achieved a score of **90 out of 100**.
 
-Проект позволил на практике применить методы анализа временных рядов, feature engineering, корректной временной валидации и ансамблирования моделей.
+The project provided practical experience in time-series analysis, feature engineering, leakage-safe temporal validation, gradient boosting, and model ensembling.
 
-## Структура репозитория
+## Repository Structure
 
 ```text
 .
-├── analysis_notebook.py          # EDA, feature engineering и обучение моделей
-├── fig1_trends.png               # анализ динамики и распределения РТО
-├── fig2_decomposition.png        # декомпозиция среднего временного ряда
-├── fig3_stats.png                # статистический анализ
-├── train.csv                     # исходные данные, не публикуются
-├── submission_final.csv          # итоговый прогноз, создаётся скриптом
+├── analysis_notebook.py          # EDA, feature engineering, and model training
+├── fig1_trends.png               # revenue dynamics and distribution analysis
+├── fig2_decomposition.png        # decomposition of the average time series
+├── fig3_stats.png                # statistical analysis
+├── train.csv                     # original data, not included
+├── submission_final.csv          # generated final forecast
 └── README.md
 ```
 
-## Запуск проекта
+## Running the Project
 
-### 1. Клонирование репозитория
+### 1. Clone the Repository
 
 ```bash
 git clone <repository-url>
 cd <repository-name>
 ```
 
-### 2. Создание виртуального окружения
+### 2. Create a Virtual Environment
 
 ```bash
 python -m venv .venv
 ```
 
-Активация в Windows:
+Activate it on Windows:
 
 ```bash
 .venv\Scripts\activate
 ```
 
-Активация в macOS/Linux:
+Activate it on macOS or Linux:
 
 ```bash
 source .venv/bin/activate
 ```
 
-### 3. Установка зависимостей
+### 3. Install Dependencies
 
 ```bash
 pip install pandas numpy matplotlib scipy scikit-learn
 ```
 
-### 4. Добавление данных
+### 4. Add the Dataset
 
-Поместите файл `train.csv` в корневую директорию проекта.
+Place `train.csv` in the root directory of the project.
 
-### 5. Запуск анализа
+### 5. Run the Analysis
 
 ```bash
 python analysis_notebook.py
 ```
 
-После выполнения скрипта будут построены графики, обучены модели и создан файл:
+The script will generate the visualizations, train the models, and create:
 
 ```text
 submission_final.csv
 ```
 
-## Используемые технологии
+## Technology Stack
 
 - Python;
 - pandas;
@@ -256,23 +257,23 @@ submission_final.csv
 - scikit-learn;
 - Ridge Regression;
 - Gradient Boosting;
-- feature engineering для временных рядов;
+- time-series feature engineering;
 - walk-forward validation.
 
-## Ограничения
+## Limitations
 
-- История содержит только десять месяцев, поэтому невозможно надёжно оценить полную годовую сезонность.
-- Статические признаки магазинов не изменяются во времени.
-- Данные соревнования не включены в публичный репозиторий.
-- Качество модели может зависеть от сдвига распределения РТО в последующих периодах.
+- The dataset contains only ten months of history, making reliable annual seasonality estimation impossible.
+- Static store characteristics do not change over time.
+- Competition data is not included in the public repository.
+- Model performance may be affected by distribution shifts in future revenue periods.
 
-## Возможные улучшения
+## Potential Improvements
 
-- CatBoost или LightGBM с нативной обработкой категориальных признаков;
-- отдельные модели для групп магазинов;
-- target encoding регионов и населённых пунктов;
-- подбор гиперпараметров через time-series cross-validation;
-- прогнозирование логарифма РТО;
-- оптимизация непосредственно под MAPE;
-- использование более длинной истории для моделирования годовой сезонности;
-- анализ ошибок по регионам, размеру магазина и уровню РТО.
+- use CatBoost or LightGBM with native categorical feature handling;
+- train separate models for different store groups;
+- apply target encoding to regions and cities;
+- tune hyperparameters using time-series cross-validation;
+- model the logarithm of revenue;
+- optimize the model directly for MAPE;
+- use a longer historical period to capture annual seasonality;
+- analyse forecast errors by region, store size, and revenue level.
